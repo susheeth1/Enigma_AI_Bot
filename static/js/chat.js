@@ -149,12 +149,6 @@ class ChatInterface {
         try {
             if (this.currentMode === 'search') {
                 await this.performWebSearch(message);
-            } else if (this.currentMode === 'image') {
-                await this.generateImageFromChat(message);
-            } else if (this.currentMode === 'rag') {
-                await this.chatWithDocuments(message);
-            } else if (this.currentMode === 'code') {
-                await this.chatWithCode(message);
             } else {
                 await this.sendChatMessage(message);
             }
@@ -242,9 +236,117 @@ class ChatInterface {
     }
 
     async performWebSearch(query) {
-        // Placeholder for web search functionality
-        // This will be implemented when the backend route is ready
-        this.addMessage('assistant', `🔍 Web search functionality will be implemented soon. You searched for: "${query}"`);
+        try {
+            const response = await fetch('/web_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `🔍 Search Error: ${data.error}`);
+            } else {
+                // Format search results
+                let searchMessage = `🔍 **Search Results for "${data.query}":**\n\n`;
+                
+                if (data.search_results && data.search_results.length > 0) {
+                    data.search_results.forEach((result, index) => {
+                        searchMessage += `**${index + 1}. ${result.title}**\n`;
+                        searchMessage += `${result.snippet}\n`;
+                        searchMessage += `🔗 [${result.link}](${result.link})\n\n`;
+                    });
+                }
+                
+                searchMessage += `**AI Analysis:**\n${data.ai_response}`;
+                
+                this.addMessage('assistant', searchMessage);
+            }
+        } catch (error) {
+            console.error('Web search error:', error);
+            this.addMessage('assistant', '🔍 Failed to perform web search. Please try again.');
+        }
+    }
+    
+    async generateImageFromChat(prompt) {
+        if (!this.imageGenEnabled) {
+            this.addMessage('assistant', '🎨 Image generation is currently disabled. Please check your configuration.');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `🎨 Image Generation Error: ${data.error}`);
+            } else if (data.image_url) {
+                this.addMessage('assistant', `🎨 Generated image for: "${prompt}"\n${data.image_url}`);
+            }
+        } catch (error) {
+            console.error('Image generation error:', error);
+            this.addMessage('assistant', '🎨 Failed to generate image. Please try again.');
+        }
+    }
+    
+    async chatWithDocuments(message) {
+        try {
+            const response = await fetch('/chat_with_documents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `📄 RAG Error: ${data.error}`);
+            } else {
+                let ragMessage = `📄 **Based on your documents:**\n\n${data.ai_response}`;
+                
+                if (data.sources && data.sources.length > 0) {
+                    ragMessage += `\n\n**Sources:** ${data.sources.join(', ')}`;
+                }
+                
+                this.addMessage('assistant', ragMessage);
+            }
+        } catch (error) {
+            console.error('RAG chat error:', error);
+            this.addMessage('assistant', '📄 Failed to chat with documents. Please try again.');
+        }
+    }
+    
+    async chatWithCode(message) {
+        try {
+            const response = await fetch('/chat_with_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `💻 Code Chat Error: ${data.error}`);
+            } else {
+                let codeMessage = `💻 **Based on your codebase:**\n\n${data.ai_response}`;
+                
+                if (data.sources && data.sources.length > 0) {
+                    codeMessage += `\n\n**Files referenced:** ${data.sources.join(', ')}`;
+                }
+                
+                this.addMessage('assistant', codeMessage);
+            }
+        } catch (error) {
+            console.error('Code chat error:', error);
+            this.addMessage('assistant', '💻 Failed to chat with codebase. Please try again.');
+        }
     }
 
     // Add message to chat
