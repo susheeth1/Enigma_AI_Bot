@@ -4,6 +4,7 @@ from docx import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 import re
 import numpy as np
+from config.settings import Config
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -13,12 +14,20 @@ class DocumentProcessor:
     def __init__(self):
         self.stop_words = set(stopwords.words('english'))
         self.lemmatizer = WordNetLemmatizer()
+        
+        # Initialize embeddings with configuration
+        model_kwargs = {
+            "device": Config.EMBEDDING_DEVICE,
+            "trust_remote_code": True
+        }
+        
+        # Add Nomic API key if available
+        if Config.NOMIC_API_KEY:
+            model_kwargs["token"] = Config.NOMIC_API_KEY
+        
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="nomic-ai/nomic-embed-text-v1.5",
-            model_kwargs={
-                "device": "cpu",  # or 'cuda' if available
-                "trust_remote_code": True
-            }
+            model_name=Config.NOMIC_MODEL_NAME,
+            model_kwargs=model_kwargs
         )
 
     def normalize_embedding(self, embedding):

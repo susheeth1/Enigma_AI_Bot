@@ -4,6 +4,7 @@ from docx import Document
 from pathlib import Path
 import mimetypes
 from utils.document_processor import DocumentProcessor
+from config.settings import Config
 
 class EnhancedDocumentProcessor(DocumentProcessor):
     """Enhanced document processor supporting multiple file formats"""
@@ -18,6 +19,14 @@ class EnhancedDocumentProcessor(DocumentProcessor):
             '.md': self._process_markdown,
             '.rtf': self._process_rtf
         }
+        
+        # Log embedding configuration
+        print(f"📊 Embedding Model: {Config.NOMIC_MODEL_NAME}")
+        print(f"🖥️ Device: {Config.EMBEDDING_DEVICE}")
+        if Config.NOMIC_API_KEY:
+            print("🔑 Nomic API Key: Configured")
+        else:
+            print("⚠️ Nomic API Key: Not configured (using default)")
     
     def process_document(self, file_path):
         """Process document based on file extension"""

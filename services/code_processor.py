@@ -4,6 +4,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from utils.document_processor import DocumentProcessor
+from config.settings import Config
 
 class CodeProcessor:
     """Service for processing code files and repositories"""
@@ -16,6 +17,10 @@ class CodeProcessor:
             '.html', '.css', '.scss', '.less', '.xml', '.json', '.yaml', '.yml',
             '.md', '.txt', '.sql', '.sh', '.bat', '.dockerfile', '.gitignore'
         }
+        
+        # Log configuration
+        print(f"💻 Code Processor initialized with {len(self.supported_extensions)} supported file types")
+        print(f"📊 Using embedding model: {Config.NOMIC_MODEL_NAME}")
     
     def process_zip_file(self, zip_path, session_id):
         """Extract and process code files from zip"""

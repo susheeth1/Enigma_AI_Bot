@@ -16,6 +16,13 @@ class Config:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     SERPER_API_KEY = os.getenv('SERPER_API_KEY')
     
+    # Nomic API configuration
+    NOMIC_API_KEY = os.getenv('NOMIC_API_KEY')
+    NOMIC_MODEL_NAME = os.getenv('NOMIC_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
+    
+    # Embedding configuration
+    EMBEDDING_DEVICE = os.getenv('EMBEDDING_DEVICE', 'cpu')  # or 'cuda' if available
+    
     @staticmethod
     def ensure_directories():
         """Create necessary directories"""

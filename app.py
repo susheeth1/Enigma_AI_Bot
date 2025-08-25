@@ -21,6 +21,14 @@ def create_app():
 def main():
     app = create_app()
     
+    # Log configuration
+    print("🚀 Starting Enigma AI Bot...")
+    print(f"📊 Nomic Model: {Config.NOMIC_MODEL_NAME}")
+    print(f"🖥️ Embedding Device: {Config.EMBEDDING_DEVICE}")
+    print(f"🔍 Serper API: {'✅ Configured' if Config.SERPER_API_KEY else '❌ Not configured'}")
+    print(f"🔑 Nomic API: {'✅ Configured' if Config.NOMIC_API_KEY else '❌ Not configured'}")
+    print(f"🤖 OpenAI API: {'✅ Configured' if Config.OPENAI_API_KEY else '❌ Not configured'}")
+    
     try:
         db_manager = DatabaseManager()
         db_manager.init_database()
