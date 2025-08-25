@@ -14,6 +14,7 @@ class Config:
     LLM_SERVER_URL = os.getenv('LLM_SERVER_URL', 'http://localhost:8000/v1/chat/completions')
     LLM_MODEL_PATH = os.getenv('LLM_MODEL_PATH', '/root/.cache/huggingface/')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    SERPER_API_KEY = os.getenv('SERPER_API_KEY')
     
     @staticmethod
     def ensure_directories():

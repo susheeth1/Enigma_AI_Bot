@@ -149,6 +149,12 @@ class ChatInterface {
         try {
             if (this.currentMode === 'search') {
                 await this.performWebSearch(message);
+            } else if (this.currentMode === 'image') {
+                await this.generateImageFromChat(message);
+            } else if (this.currentMode === 'rag') {
+                await this.chatWithDocuments(message);
+            } else if (this.currentMode === 'code') {
+                await this.chatWithCode(message);
             } else {
                 await this.sendChatMessage(message);
             }
