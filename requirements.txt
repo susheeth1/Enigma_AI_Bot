@@ -12,3 +12,4 @@ python-dotenv
 werkzeug
 openai
 nomic
+PyMuPDF
