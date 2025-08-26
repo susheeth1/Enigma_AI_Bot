@@ -1,10 +1,10 @@
 import os
 import nltk
 from docx import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 import re
 import numpy as np
 from config.settings import Config
+from utils.nomic_embeddings import NomicEmbeddings
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -15,20 +15,13 @@ class DocumentProcessor:
         self.stop_words = set(stopwords.words('english'))
         self.lemmatizer = WordNetLemmatizer()
         
-        # Initialize embeddings with configuration
-        model_kwargs = {
-            "device": Config.EMBEDDING_DEVICE,
-            "trust_remote_code": True
-        }
-        
-        # Add Nomic API key if available
-        if Config.NOMIC_API_KEY:
-            model_kwargs["token"] = Config.NOMIC_API_KEY
-        
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=Config.NOMIC_MODEL_NAME,
-            model_kwargs=model_kwargs
-        )
+        # Initialize Nomic embeddings
+        try:
+            self.embeddings = NomicEmbeddings()
+            print("✅ Document processor initialized with Nomic API embeddings")
+        except Exception as e:
+            print(f"❌ Failed to initialize Nomic embeddings: {e}")
+            raise
 
     def normalize_embedding(self, embedding):
         norm = np.linalg.norm(embedding)
@@ -102,12 +95,13 @@ class DocumentProcessor:
 
                     for chunk in chunks:
                         if chunk.strip():
-                            embedding = self.normalize_embedding(self.embeddings.embed_query(chunk))
-                            processed_chunks.append({
-                                'text': chunk,
-                                'original_text': paragraph,
-                                'embedding': embedding
-                            })
+                            embedding = self.get_embedding(chunk)
+                            if embedding:
+                                processed_chunks.append({
+                                    'text': chunk,
+                                    'original_text': paragraph,
+                                    'embedding': embedding
+                                })
 
             return processed_chunks
         except Exception as e:
@@ -115,9 +109,9 @@ class DocumentProcessor:
             return []
 
     def get_embedding(self, text):
-        """Get embedding for text"""
+        """Get embedding for text using Nomic API"""
         try:
-            return self.normalize_embedding(self.embeddings.embed_query(text))
+            return self.embeddings.embed_query(text)
         except Exception as e:
             print(f"Error getting embedding: {str(e)}")
             return None

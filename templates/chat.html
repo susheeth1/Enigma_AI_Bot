@@ -73,13 +73,19 @@
             <div class="chat-actions">
                 <div class="mode-selector">
                     <button class="mode-btn active" data-mode="chat">
-                        <i class="fas fa-comments"></i> Chat
+                        💬 Chat
                     </button>
                     <button class="mode-btn" data-mode="image">
-                        <i class="fas fa-image"></i> Image
+                        🎨 Image
                     </button>
                     <button class="mode-btn" data-mode="search">
-                        <i class="fas fa-search"></i> Search
+                        🔍 Search
+                    </button>
+                    <button class="mode-btn" data-mode="rag">
+                        📄 RAG
+                    </button>
+                    <button class="mode-btn" data-mode="code">
+                        💻 Code
                     </button>
                 </div>
                 <button class="btn btn-ghost btn-sm" onclick="clearChat()">
@@ -97,12 +103,13 @@
                 <div class="message-avatar">AI</div>
                 <div class="message-content">
                     <div class="message-text">
-                        Hello! I'm your AI assistant. You can:
-                        <br>• Ask me questions and get streaming responses
-                        <br>• Generate images by switching to Image mode
-                        <br>• Search the web using Search mode
-                        <br>• Upload documents for analysis
-                        <br><br>How can I help you today?
+                        Hello! I'm your AI assistant with multiple modes:
+                        <br><br>💬 <strong>Chat Mode</strong>: Regular AI conversation with code generation in canvas
+                        <br>🎨 <strong>Image Mode</strong>: Generate images from text prompts (toggle in settings)
+                        <br>🔍 <strong>Search Mode</strong>: Search the web and get AI-analyzed results
+                        <br>📄 <strong>RAG Mode</strong>: Upload documents (PDF, DOCX, TXT, MD) and chat with them
+                        <br>💻 <strong>Code Mode</strong>: Upload ZIP codebase and interact with your code
+                        <br><br>Switch between modes using the buttons above. How can I help you today?
                     </div>
                     <div class="message-time">Just now</div>
                 </div>
@@ -123,7 +130,7 @@
                 <textarea 
                     id="messageInput" 
                     class="message-input" 
-                    placeholder="Type your message here..."
+                    placeholder="💬 Type your message here..."
                     rows="1"
                 ></textarea>
                 <div class="input-actions">
@@ -255,6 +262,33 @@
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                     <input type="checkbox" id="imageGenCheck">
                     <span>Enable image generation</span>
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Web Search</label>
+                <div class="setting-description">Enable web search using Serper API</div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="webSearchCheck" checked>
+                    <span>Enable web search</span>
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">RAG Document Processing</label>
+                <div class="setting-description">Enable document upload and RAG functionality</div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="ragCheck" checked>
+                    <span>Enable RAG processing</span>
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label class="setting-label">Code Analysis</label>
+                <div class="setting-description">Enable codebase upload and analysis</div>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="codeAnalysisCheck" checked>
+                    <span>Enable code analysis</span>
                 </label>
             </div>
         </div>
