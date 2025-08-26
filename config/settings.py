@@ -18,10 +18,10 @@ class Config:
     
     # Nomic API configuration
     NOMIC_API_KEY = os.getenv('NOMIC_API_KEY')
-    NOMIC_MODEL_NAME = os.getenv('NOMIC_MODEL_NAME', 'nomic-ai/nomic-embed-text-v1.5')
+    NOMIC_MODEL_NAME = os.getenv('NOMIC_MODEL_NAME', 'nomic-embed-text-v1.5')
     
     # Embedding configuration
-    EMBEDDING_DEVICE = os.getenv('EMBEDDING_DEVICE', 'cpu')  # or 'cuda' if available
+    EMBEDDING_DEVICE = os.getenv('EMBEDDING_DEVICE', 'api')  # Using API instead of local
     
     @staticmethod
     def ensure_directories():

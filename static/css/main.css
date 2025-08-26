@@ -376,12 +376,80 @@ body {
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-secondary);
+    min-width: 70px;
 }
 
 .mode-btn.active {
     background: var(--surface);
     color: var(--text-primary);
     box-shadow: var(--shadow);
+}
+
+.mode-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.mode-btn:hover:not(.active):not(:disabled) {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-color);
+}
+
+/* Code Canvas Styling */
+.code-canvas {
+    background: #1e1e1e;
+    border-radius: var(--radius);
+    margin: 1rem 0;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+.code-header {
+    background: #2d2d2d;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+}
+
+.code-language {
+    color: #ffd700;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.copy-code-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.copy-code-btn:hover {
+    background: #005a9e;
+}
+
+.code-content {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1rem;
+    margin: 0;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.code-content code {
+    background: none;
+    padding: 0;
+    color: inherit;
 }
 
 .chat-messages {
@@ -990,12 +1058,22 @@ body {
     
     .mode-btn {
         padding: 0.375rem 0.5rem;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+        min-width: 50px;
     }
     
     .chat-actions {
         flex-wrap: wrap;
         gap: 0.5rem;
+    }
+    
+    .code-canvas {
+        margin: 0.5rem 0;
+    }
+    
+    .code-content {
+        padding: 0.75rem;
+        font-size: 0.8125rem;
     }
 }
 

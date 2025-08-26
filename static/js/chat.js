@@ -615,6 +615,25 @@ function closeImageModal() {
     document.body.style.overflow = 'auto';
 }
 
+function copyCode(button) {
+    const codeBlock = button.closest('.code-canvas').querySelector('.code-content code');
+    const text = codeBlock.textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '#007acc';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy code:', err);
+        alert('Failed to copy code to clipboard');
+    });
+}
+
 // Initialize chat interface when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     window.chatInterface = new ChatInterface();
