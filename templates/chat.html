@@ -142,13 +142,13 @@
                     </div>
                     <div class="file-upload" id="ragUpload" style="display: none;">
                         <input type="file" id="ragFileInput" accept=".pdf,.docx,.txt,.md">
-                        <button class="action-btn file-btn" onclick="document.getElementById('ragFileInput').click()" title="Upload Document for RAG">
+                        <button class="action-btn file-btn" onclick="window.chatInterface.uploadRAGDocument()" title="Upload Document for RAG">
                             <i class="fas fa-file-text"></i>
                         </button>
                     </div>
                     <div class="file-upload" id="codeUpload" style="display: none;">
                         <input type="file" id="codeFileInput" accept=".zip">
-                        <button class="action-btn file-btn" onclick="document.getElementById('codeFileInput').click()" title="Upload Codebase ZIP">
+                        <button class="action-btn file-btn" onclick="window.chatInterface.uploadCodebase()" title="Upload Codebase ZIP">
                             <i class="fas fa-file-archive"></i>
                         </button>
                     </div>

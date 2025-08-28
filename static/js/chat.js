@@ -4,6 +4,13 @@ class ChatInterface {
         this.autoScroll = true;
         this.currentMode = 'chat';
         this.streamingMessage = null;
+        this.settings = {
+            imageGenEnabled: false,
+            webSearchEnabled: true,
+            ragEnabled: true,
+            codeAnalysisEnabled: true,
+            streamingEnabled: true
+        };
         this.init();
     }
 
@@ -11,6 +18,7 @@ class ChatInterface {
         this.bindEvents();
         this.loadSettings();
         this.focusInput();
+        this.updateModeButtons();
     }
 
     bindEvents() {
@@ -40,16 +48,21 @@ class ChatInterface {
 
     bindSettingsEvents() {
         const settingsElements = {
-            theme: document.getElementById('themeSelect'),
-            fontSize: document.getElementById('fontSizeSelect'),
             autoScroll: document.getElementById('autoScrollCheck'),
             sound: document.getElementById('soundCheck'),
-            imageGenEnabled: document.getElementById('imageGenCheck')
+            imageGenEnabled: document.getElementById('imageGenCheck'),
+            webSearchEnabled: document.getElementById('webSearchCheck'),
+            ragEnabled: document.getElementById('ragCheck'),
+            codeAnalysisEnabled: document.getElementById('codeAnalysisCheck'),
+            streamingEnabled: document.getElementById('streamingCheck')
         };
 
         Object.entries(settingsElements).forEach(([key, element]) => {
             if (element) {
-                element.addEventListener('change', (e) => this.updateSetting(key, e.target.value || e.target.checked));
+                element.addEventListener('change', (e) => {
+                    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+                    this.updateSetting(key, value);
+                });
             }
         });
 
@@ -114,6 +127,12 @@ class ChatInterface {
 
     // Switch between chat modes
     switchMode(mode) {
+        // Check if mode is enabled
+        if (!this.isModeEnabled(mode)) {
+            this.showNotification(`${mode.charAt(0).toUpperCase() + mode.slice(1)} mode is disabled. Enable it in settings.`, 'warning');
+            return;
+        }
+
         this.currentMode = mode;
         
         // Update active button
@@ -121,12 +140,95 @@ class ChatInterface {
             btn.classList.toggle('active', btn.dataset.mode === mode);
         });
 
-        // Show/hide relevant UI elements
-        if (mode === 'image') {
-            this.openImageGenPanel();
-        } else {
+        // Update UI based on mode
+        this.updateUIForMode(mode);
+        this.updateInputPlaceholder(mode);
+        this.updateFileInputs(mode);
+    }
+
+    isModeEnabled(mode) {
+        switch (mode) {
+            case 'image':
+                return this.settings.imageGenEnabled;
+            case 'search':
+                return this.settings.webSearchEnabled;
+            case 'rag':
+                return this.settings.ragEnabled;
+            case 'code':
+                return this.settings.codeAnalysisEnabled;
+            case 'chat':
+            default:
+                return true;
+        }
+    }
+
+    updateUIForMode(mode) {
+        // Close image panel if not in image mode
+        if (mode !== 'image') {
             this.closeImageGenPanel();
         }
+        
+        // Show image panel if in image mode
+        if (mode === 'image') {
+            this.openImageGenPanel();
+        }
+    }
+
+    updateInputPlaceholder(mode) {
+        const messageInput = document.getElementById('messageInput');
+        const placeholders = {
+            'chat': '💬 Type your message here...',
+            'image': '🎨 Describe the image you want to generate...',
+            'search': '🔍 What would you like to search for?',
+            'rag': '📄 Ask questions about your uploaded documents...',
+            'code': '💻 Ask questions about your uploaded codebase...'
+        };
+        
+        if (messageInput) {
+            messageInput.placeholder = placeholders[mode] || placeholders['chat'];
+        }
+    }
+
+    updateFileInputs(mode) {
+        // Hide all file inputs first
+        const fileInputs = {
+            'fileInput': document.querySelector('.file-upload'),
+            'ragFileInput': document.getElementById('ragUpload'),
+            'codeFileInput': document.getElementById('codeUpload')
+        };
+
+        Object.values(fileInputs).forEach(input => {
+            if (input) input.style.display = 'none';
+        });
+
+        // Show appropriate file input based on mode
+        switch (mode) {
+            case 'rag':
+                if (fileInputs.ragFileInput) fileInputs.ragFileInput.style.display = 'block';
+                break;
+            case 'code':
+                if (fileInputs.codeFileInput) fileInputs.codeFileInput.style.display = 'block';
+                break;
+            case 'chat':
+            default:
+                if (fileInputs.fileInput) fileInputs.fileInput.style.display = 'block';
+                break;
+        }
+    }
+
+    updateModeButtons() {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            const mode = btn.dataset.mode;
+            const isEnabled = this.isModeEnabled(mode);
+            
+            btn.disabled = !isEnabled;
+            btn.classList.toggle('disabled', !isEnabled);
+            
+            if (!isEnabled && btn.classList.contains('active')) {
+                // Switch to chat mode if current mode is disabled
+                this.switchMode('chat');
+            }
+        });
     }
 
     // Send message with streaming support
@@ -148,13 +250,13 @@ class ChatInterface {
         this.showTypingIndicator();
 
         try {
-            if (this.currentMode === 'search') {
-                await this.performWebSearch(message);
-            } else if (this.currentMode === 'image') {
+            if (this.currentMode === 'image' && this.settings.imageGenEnabled) {
                 await this.generateImageFromChat(message);
-            } else if (this.currentMode === 'rag') {
+            } else if (this.currentMode === 'search' && this.settings.webSearchEnabled) {
+                await this.performWebSearch(message);
+            } else if (this.currentMode === 'rag' && this.settings.ragEnabled) {
                 await this.chatWithDocuments(message);
-            } else if (this.currentMode === 'code') {
+            } else if (this.currentMode === 'code' && this.settings.codeAnalysisEnabled) {
                 await this.chatWithCode(message);
             } else {
                 await this.sendChatMessage(message);
@@ -243,9 +345,105 @@ class ChatInterface {
     }
 
     async performWebSearch(query) {
-        // Placeholder for web search functionality
-        // This will be implemented when the backend route is ready
-        this.addMessage('assistant', `🔍 Web search functionality will be implemented soon. You searched for: "${query}"`);
+        try {
+            const response = await fetch('/web_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `🔍 Search Error: ${data.error}`);
+            } else {
+                let searchMessage = `🔍 **Web Search Results for "${data.query}"**\n\n`;
+                searchMessage += `Found ${data.search_results.length} results:\n\n`;
+                
+                data.search_results.forEach((result, index) => {
+                    searchMessage += `**${index + 1}. ${result.title}**\n`;
+                    searchMessage += `${result.snippet}\n`;
+                    searchMessage += `🔗 [${result.link}](${result.link})\n\n`;
+                });
+                
+                searchMessage += `**AI Analysis:**\n${data.ai_response}`;
+                this.addMessage('assistant', searchMessage);
+            }
+        } catch (error) {
+            console.error('Web search error:', error);
+            this.addMessage('assistant', '🔍 Web search failed. Please check your connection and try again.');
+        }
+    }
+
+    async generateImageFromChat(prompt) {
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `🎨 Image Generation Error: ${data.error}`);
+            } else if (data.image_url) {
+                this.addMessage('assistant', `🎨 Generated image for: "${prompt}"\n<img src="${data.image_url}" alt="Generated Image" class="generated-image" onclick="openImageModal('${data.image_url}')">`);
+            }
+        } catch (error) {
+            console.error('Image generation error:', error);
+            this.addMessage('assistant', '🎨 Image generation failed. Please try again.');
+        }
+    }
+
+    async chatWithDocuments(message) {
+        try {
+            const response = await fetch('/chat_with_documents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `📄 RAG Error: ${data.error}`);
+            } else {
+                let ragMessage = `📄 **Document Analysis**\n\n`;
+                ragMessage += `**Your Question:** ${data.user_message}\n\n`;
+                ragMessage += `**Answer from Documents:**\n${data.ai_response}\n\n`;
+                ragMessage += `**Sources:** ${data.sources.join(', ')} (${data.relevant_documents} relevant chunks)`;
+                this.addMessage('assistant', ragMessage);
+            }
+        } catch (error) {
+            console.error('RAG error:', error);
+            this.addMessage('assistant', '📄 Document chat failed. Please upload documents first.');
+        }
+    }
+
+    async chatWithCode(message) {
+        try {
+            const response = await fetch('/chat_with_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `💻 Code Analysis Error: ${data.error}`);
+            } else {
+                let codeMessage = `💻 **Codebase Analysis**\n\n`;
+                codeMessage += `**Your Question:** ${data.user_message}\n\n`;
+                codeMessage += `**Code Analysis:**\n${data.ai_response}\n\n`;
+                codeMessage += `**Relevant Files:** ${data.sources.join(', ')} (${data.relevant_files} files analyzed)`;
+                this.addMessage('assistant', codeMessage);
+            }
+        } catch (error) {
+            console.error('Code analysis error:', error);
+            this.addMessage('assistant', '💻 Code analysis failed. Please upload a codebase ZIP first.');
+        }
     }
 
     // Add message to chat
@@ -270,6 +468,12 @@ class ChatInterface {
             }
         }
         
+        // Handle code blocks
+        messageContent = this.formatCodeBlocks(messageContent);
+        
+        // Handle markdown formatting
+        messageContent = this.formatMarkdown(messageContent);
+        
         messageDiv.innerHTML = `
             <div class="message-avatar">${avatar}</div>
             <div class="message-content">
@@ -285,6 +489,36 @@ class ChatInterface {
         }
 
         return messageDiv;
+    }
+
+    formatCodeBlocks(content) {
+        // Format code blocks with syntax highlighting
+        const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+        return content.replace(codeBlockRegex, (match, language, code) => {
+            const lang = language || 'text';
+            const codeId = 'code_' + Math.random().toString(36).substr(2, 9);
+            return `
+                <div class="code-canvas">
+                    <div class="code-header">
+                        <span class="code-language">${lang}</span>
+                        <button class="copy-code-btn" onclick="copyCode(this)">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="code-content">
+                        <code id="${codeId}">${code.trim()}</code>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    formatMarkdown(content) {
+        // Basic markdown formatting
+        content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        content = content.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        return content;
     }
 
     addStreamingMessage(role) {
@@ -469,6 +703,86 @@ class ChatInterface {
         imagesContainer.insertBefore(imageCard, imagesContainer.firstChild);
     }
 
+    // RAG Document Upload
+    uploadRAGDocument() {
+        document.getElementById('ragFileInput').click();
+    }
+
+    // Codebase Upload
+    uploadCodebase() {
+        document.getElementById('codeFileInput').click();
+    }
+
+    // Handle RAG file upload
+    async handleRAGUpload() {
+        const fileInput = document.getElementById('ragFileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        this.addMessage('user', `📄 Uploading document: ${file.name}`);
+        this.showTypingIndicator();
+
+        try {
+            const response = await fetch('/upload_document', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `📄 Upload failed: ${data.error}`);
+            } else {
+                this.addMessage('assistant', `📄 ${data.message}\n\nProcessed ${data.chunks} chunks from "${data.filename}". You can now ask questions about this document!`);
+            }
+        } catch (error) {
+            console.error('RAG upload error:', error);
+            this.addMessage('assistant', '📄 Document upload failed. Please try again.');
+        } finally {
+            this.hideTypingIndicator();
+            fileInput.value = '';
+        }
+    }
+
+    // Handle codebase upload
+    async handleCodebaseUpload() {
+        const fileInput = document.getElementById('codeFileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        this.addMessage('user', `💻 Uploading codebase: ${file.name}`);
+        this.showTypingIndicator();
+
+        try {
+            const response = await fetch('/upload_codebase', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                this.addMessage('assistant', `💻 Upload failed: ${data.error}`);
+            } else {
+                this.addMessage('assistant', `💻 ${data.message}\n\nProcessed ${data.chunks} code chunks from "${data.filename}". You can now ask questions about your codebase!`);
+            }
+        } catch (error) {
+            console.error('Codebase upload error:', error);
+            this.addMessage('assistant', '💻 Codebase upload failed. Please try again.');
+        } finally {
+            this.hideTypingIndicator();
+            fileInput.value = '';
+        }
+    }
+
     // Navigation functions
     newChat() {
         fetch('/new_session')
@@ -514,61 +828,86 @@ class ChatInterface {
 
     updateSetting(key, value) {
         localStorage.setItem(key, value);
+        this.settings[key] = value;
         
         switch (key) {
             case 'autoScroll':
                 this.autoScroll = value;
                 break;
-            case 'theme':
-                this.applyTheme(value);
+            case 'imageGenEnabled':
+            case 'webSearchEnabled':
+            case 'ragEnabled':
+            case 'codeAnalysisEnabled':
+                this.updateModeButtons();
                 break;
-            case 'fontSize':
-                this.applyFontSize(value);
+            case 'streamingEnabled':
+                // Update streaming preference
                 break;
         }
     }
 
     loadSettings() {
-        const settings = {
-            theme: localStorage.getItem('theme') || 'light',
-            fontSize: localStorage.getItem('fontSize') || 'medium',
-            autoScroll: localStorage.getItem('autoScroll') !== 'false',
-            sound: localStorage.getItem('sound') === 'true'
+        const defaultSettings = {
+            autoScroll: true,
+            sound: false,
+            imageGenEnabled: false,
+            webSearchEnabled: true,
+            ragEnabled: true,
+            codeAnalysisEnabled: true,
+            streamingEnabled: true
         };
 
-        // Apply settings
-        this.autoScroll = settings.autoScroll;
-        this.applyTheme(settings.theme);
-        this.applyFontSize(settings.fontSize);
+        // Load settings from localStorage
+        Object.keys(defaultSettings).forEach(key => {
+            const saved = localStorage.getItem(key);
+            if (saved !== null) {
+                this.settings[key] = saved === 'true';
+            } else {
+                this.settings[key] = defaultSettings[key];
+            }
+        });
+
+        this.autoScroll = this.settings.autoScroll;
 
         // Update UI
         const elements = {
-            themeSelect: document.getElementById('themeSelect'),
-            fontSizeSelect: document.getElementById('fontSizeSelect'),
             autoScrollCheck: document.getElementById('autoScrollCheck'),
-            soundCheck: document.getElementById('soundCheck')
+            soundCheck: document.getElementById('soundCheck'),
+            imageGenCheck: document.getElementById('imageGenCheck'),
+            webSearchCheck: document.getElementById('webSearchCheck'),
+            ragCheck: document.getElementById('ragCheck'),
+            codeAnalysisCheck: document.getElementById('codeAnalysisCheck'),
+            streamingCheck: document.getElementById('streamingCheck')
         };
 
         Object.entries(elements).forEach(([key, element]) => {
             if (element) {
-                const settingKey = key.replace('Select', '').replace('Check', '');
+                const settingKey = key.replace('Check', 'Enabled').replace('autoScrollEnabled', 'autoScroll').replace('soundEnabled', 'sound');
                 if (element.type === 'checkbox') {
-                    element.checked = settings[settingKey];
+                    element.checked = this.settings[settingKey];
                 } else {
-                    element.value = settings[settingKey];
+                    element.value = this.settings[settingKey];
                 }
             }
         });
     }
 
-    applyTheme(theme) {
-        // Theme application logic would go here
-        document.documentElement.setAttribute('data-theme', theme);
-    }
-
-    applyFontSize(size) {
-        // Font size application logic would go here
-        document.documentElement.setAttribute('data-font-size', size);
+    showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            ${message}
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 
     // Mobile functions
@@ -646,6 +985,15 @@ document.addEventListener('DOMContentLoaded', function() {
     window.toggleSidebar = () => window.chatInterface.toggleSidebar();
     window.closeSidebar = () => window.chatInterface.closeSidebar();
     window.logout = () => window.chatInterface.logout();
+    
+    // File upload event listeners
+    document.getElementById('ragFileInput').addEventListener('change', () => {
+        window.chatInterface.handleRAGUpload();
+    });
+    
+    document.getElementById('codeFileInput').addEventListener('change', () => {
+        window.chatInterface.handleCodebaseUpload();
+    });
     
     // Close modals with Escape key
     document.addEventListener('keydown', function(e) {
