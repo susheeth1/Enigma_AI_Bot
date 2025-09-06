@@ -102,7 +102,7 @@ class ImageProcessor:
                         {
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Describe this image in detail."},
+                                {"type": "text", "text": "Describe this image in detail. Identify any characters, people, objects, text, or important elements you can see."},
                                 {"type": "image_url", "image_url": {"url": image_url_data}}
                             ]
                         }
@@ -129,7 +129,7 @@ class ImageProcessor:
                             {
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Describe this image in detail."},
+                                    {"type": "text", "text": "Describe this image in detail. Identify any characters, people, objects, text, or important elements you can see."},
                                     {"type": "image_url", "image_url": {"url": image_url_data}}
                                 ]
                             }
