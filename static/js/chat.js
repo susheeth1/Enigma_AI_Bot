@@ -1,3 +1,8 @@
+/**
+ * Complete Chat Interface with All Working Modes
+ * Handles mode switching, file uploads, and all chat functionalities
+ */
+
 class ChatInterface {
     constructor() {
         this.isLoading = false;
@@ -19,21 +24,35 @@ class ChatInterface {
         this.loadSettings();
         this.focusInput();
         this.updateModeButtons();
+        this.updateUIForMode(this.currentMode);
     }
 
     bindEvents() {
         // Message input events
         const messageInput = document.getElementById('messageInput');
-        messageInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        messageInput.addEventListener('input', (e) => this.autoResize(e.target));
+        if (messageInput) {
+            messageInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            messageInput.addEventListener('input', (e) => this.autoResize(e.target));
+        }
 
         // Button events
-        document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
-        document.getElementById('fileInput').addEventListener('change', () => this.uploadFile());
+        const sendBtn = document.getElementById('sendBtn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => this.sendMessage());
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.addEventListener('change', () => this.uploadFile());
+        }
 
         // Mode selector events
         document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchMode(e.target.dataset.mode));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const mode = e.target.dataset.mode || e.target.closest('.mode-btn').dataset.mode;
+                this.switchMode(mode);
+            });
         });
 
         // Settings events
@@ -44,6 +63,23 @@ class ChatInterface {
 
         // Image generation events
         this.bindImageGenEvents();
+
+        // File upload events
+        this.bindFileUploadEvents();
+    }
+
+    bindFileUploadEvents() {
+        // RAG file upload
+        const ragFileInput = document.getElementById('ragFileInput');
+        if (ragFileInput) {
+            ragFileInput.addEventListener('change', () => this.handleRAGUpload());
+        }
+
+        // Code file upload
+        const codeFileInput = document.getElementById('codeFileInput');
+        if (codeFileInput) {
+            codeFileInput.addEventListener('change', () => this.handleCodebaseUpload());
+        }
     }
 
     bindSettingsEvents() {
@@ -67,11 +103,14 @@ class ChatInterface {
         });
 
         // Close modal when clicking outside
-        document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.closeSettings();
-            }
-        });
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.closeSettings();
+                }
+            });
+        }
     }
 
     bindMobileEvents() {
@@ -127,6 +166,8 @@ class ChatInterface {
 
     // Switch between chat modes
     switchMode(mode) {
+        console.log('Switching to mode:', mode);
+        
         // Check if mode is enabled
         if (!this.isModeEnabled(mode)) {
             this.showNotification(`${mode.charAt(0).toUpperCase() + mode.slice(1)} mode is disabled. Enable it in settings.`, 'warning');
@@ -137,13 +178,18 @@ class ChatInterface {
         
         // Update active button
         document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === mode);
+            btn.classList.remove('active');
+            if (btn.dataset.mode === mode) {
+                btn.classList.add('active');
+            }
         });
 
         // Update UI based on mode
         this.updateUIForMode(mode);
         this.updateInputPlaceholder(mode);
         this.updateFileInputs(mode);
+        
+        console.log('Current mode set to:', this.currentMode);
     }
 
     isModeEnabled(mode) {
@@ -172,6 +218,19 @@ class ChatInterface {
         if (mode === 'image') {
             this.openImageGenPanel();
         }
+
+        // Update chat header title
+        const chatTitle = document.querySelector('.chat-title h1');
+        if (chatTitle) {
+            const titles = {
+                'chat': '💬 AI Assistant',
+                'image': '🎨 Image Generator',
+                'search': '🔍 Web Search',
+                'rag': '📄 Document Chat',
+                'code': '💻 Code Assistant'
+            };
+            chatTitle.textContent = titles[mode] || 'AI Assistant';
+        }
     }
 
     updateInputPlaceholder(mode) {
@@ -193,8 +252,8 @@ class ChatInterface {
         // Hide all file inputs first
         const fileInputs = {
             'fileInput': document.querySelector('.file-upload'),
-            'ragFileInput': document.getElementById('ragUpload'),
-            'codeFileInput': document.getElementById('codeUpload')
+            'ragUpload': document.getElementById('ragUpload'),
+            'codeUpload': document.getElementById('codeUpload')
         };
 
         Object.values(fileInputs).forEach(input => {
@@ -204,12 +263,14 @@ class ChatInterface {
         // Show appropriate file input based on mode
         switch (mode) {
             case 'rag':
-                if (fileInputs.ragFileInput) fileInputs.ragFileInput.style.display = 'block';
+                if (fileInputs.ragUpload) fileInputs.ragUpload.style.display = 'block';
                 break;
             case 'code':
-                if (fileInputs.codeFileInput) fileInputs.codeFileInput.style.display = 'block';
+                if (fileInputs.codeUpload) fileInputs.codeUpload.style.display = 'block';
                 break;
             case 'chat':
+            case 'image':
+            case 'search':
             default:
                 if (fileInputs.fileInput) fileInputs.fileInput.style.display = 'block';
                 break;
@@ -231,7 +292,7 @@ class ChatInterface {
         });
     }
 
-    // Send message with streaming support
+    // Send message with mode-specific handling
     async sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
@@ -250,20 +311,43 @@ class ChatInterface {
         this.showTypingIndicator();
 
         try {
-            if (this.currentMode === 'image' && this.settings.imageGenEnabled) {
-                await this.generateImageFromChat(message);
-            } else if (this.currentMode === 'search' && this.settings.webSearchEnabled) {
-                await this.performWebSearch(message);
-            } else if (this.currentMode === 'rag' && this.settings.ragEnabled) {
-                await this.chatWithDocuments(message);
-            } else if (this.currentMode === 'code' && this.settings.codeAnalysisEnabled) {
-                await this.chatWithCode(message);
-            } else {
-                await this.sendChatMessage(message);
+            switch (this.currentMode) {
+                case 'image':
+                    if (this.settings.imageGenEnabled) {
+                        await this.generateImageFromChat(message);
+                    } else {
+                        this.addMessage('assistant', 'Image generation is disabled. Please enable it in settings.');
+                    }
+                    break;
+                case 'search':
+                    if (this.settings.webSearchEnabled) {
+                        await this.performWebSearch(message);
+                    } else {
+                        this.addMessage('assistant', 'Web search is disabled. Please enable it in settings.');
+                    }
+                    break;
+                case 'rag':
+                    if (this.settings.ragEnabled) {
+                        await this.chatWithDocuments(message);
+                    } else {
+                        this.addMessage('assistant', 'RAG is disabled. Please enable it in settings.');
+                    }
+                    break;
+                case 'code':
+                    if (this.settings.codeAnalysisEnabled) {
+                        await this.chatWithCode(message);
+                    } else {
+                        this.addMessage('assistant', 'Code analysis is disabled. Please enable it in settings.');
+                    }
+                    break;
+                case 'chat':
+                default:
+                    await this.sendChatMessage(message);
+                    break;
             }
         } catch (error) {
             console.error('Error:', error);
-            this.addMessage('assistant', 'Sorry, I encountered a network error. Please try again.');
+            this.addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
         } finally {
             this.hideTypingIndicator();
             this.isLoading = false;
@@ -276,7 +360,7 @@ class ChatInterface {
             const response = await fetch('/send_message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: message, stream: true })
+                body: JSON.stringify({ message: message, stream: this.settings.streamingEnabled })
             });
 
             if (!response.ok) {
@@ -285,7 +369,7 @@ class ChatInterface {
 
             // Check if response supports streaming
             const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('text/stream')) {
+            if (contentType && contentType.includes('text/stream') && this.settings.streamingEnabled) {
                 await this.handleStreamingResponse(response);
             } else {
                 const data = await response.json();
@@ -459,7 +543,9 @@ class ChatInterface {
         
         // Handle image content
         let messageContent = content;
-        if (content.includes('data:image/') || content.includes('/static/generated_images/')) {
+        if (content.includes('<img')) {
+            // Image content is already formatted
+        } else if (content.includes('data:image/') || content.includes('/static/generated_images/')) {
             const imageMatch = content.match(/(data:image\/[^"]+|\/static\/generated_images\/[^"]+)/);
             if (imageMatch) {
                 const imageUrl = imageMatch[1];
@@ -506,11 +592,17 @@ class ChatInterface {
                         </button>
                     </div>
                     <div class="code-content">
-                        <code id="${codeId}">${code.trim()}</code>
+                        <code id="${codeId}">${this.escapeHtml(code.trim())}</code>
                     </div>
                 </div>
             `;
         });
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     formatMarkdown(content) {
@@ -530,7 +622,8 @@ class ChatInterface {
 
     updateStreamingMessage(messageElement, content) {
         const messageText = messageElement.querySelector('.message-text');
-        messageText.innerHTML = content.replace(/\n/g, '<br>');
+        const formattedContent = this.formatCodeBlocks(this.formatMarkdown(content));
+        messageText.innerHTML = formattedContent.replace(/\n/g, '<br>');
         
         if (this.autoScroll) {
             const chatMessages = document.getElementById('chat-messages');
@@ -550,25 +643,33 @@ class ChatInterface {
 
     // Typing indicator
     showTypingIndicator() {
-        document.getElementById('typing-indicator').classList.add('show');
-        if (this.autoScroll) {
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.classList.add('show');
+            if (this.autoScroll) {
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
         }
     }
 
     hideTypingIndicator() {
-        document.getElementById('typing-indicator').classList.remove('show');
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.classList.remove('show');
+        }
     }
 
     // Update send button state
     updateSendButton() {
         const sendBtn = document.getElementById('sendBtn');
-        sendBtn.disabled = this.isLoading;
-        sendBtn.innerHTML = this.isLoading ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-paper-plane"></i>';
+        if (sendBtn) {
+            sendBtn.disabled = this.isLoading;
+            sendBtn.innerHTML = this.isLoading ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-paper-plane"></i>';
+        }
     }
 
-    // File upload
+    // File upload for general chat
     async uploadFile() {
         const fileInput = document.getElementById('fileInput');
         const file = fileInput.files[0];
@@ -609,108 +710,6 @@ class ChatInterface {
             this.hideTypingIndicator();
             fileInput.value = '';
         }
-    }
-
-    // Image Generation
-    openImageGenPanel() {
-        document.getElementById('imageGenPanel').classList.add('show');
-    }
-
-    closeImageGenPanel() {
-        document.getElementById('imageGenPanel').classList.remove('show');
-        // Reset mode to chat
-        this.switchMode('chat');
-    }
-
-    setImagePrompt(text) {
-        const promptInput = document.getElementById('imagePromptInput');
-        if (promptInput) {
-            promptInput.value = text;
-            promptInput.focus();
-        }
-    }
-
-    async generateImage() {
-        const promptInput = document.getElementById('imagePromptInput');
-        const prompt = promptInput.value.trim();
-
-        if (!prompt) {
-            alert('Please enter a prompt to generate an image');
-            return;
-        }
-
-        const generateBtn = document.getElementById('generateBtn');
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-
-        try {
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-            }
-
-            if (data.image_url) {
-                // Add to chat
-                this.addMessage('assistant', `🎨 Generated image for: "${prompt}"\n${data.image_url}`);
-                
-                // Add to image panel
-                this.addImageToPanel(data.image_url, prompt);
-                
-                // Clear prompt
-                promptInput.value = '';
-            } else {
-                throw new Error(data.error || 'Failed to generate image');
-            }
-
-        } catch (error) {
-            console.error('Generation error:', error);
-            alert(`Failed to generate image: ${error.message}`);
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Image';
-        }
-    }
-
-    addImageToPanel(imageUrl, prompt) {
-        const imagesContainer = document.getElementById('generatedImages');
-        if (!imagesContainer) return;
-
-        const imageCard = document.createElement('div');
-        imageCard.className = 'image-card';
-        
-        imageCard.innerHTML = `
-            <img src="${imageUrl}" alt="Generated Image" onclick="openImageModal('${imageUrl}')">
-            <div class="image-card-info">
-                <div class="image-prompt">${prompt}</div>
-                <div class="image-actions">
-                    <button class="image-action" onclick="openImageModal('${imageUrl}')">
-                        <i class="fas fa-expand"></i> View
-                    </button>
-                    <a href="${imageUrl}" download="generated-image.png" class="image-action">
-                        <i class="fas fa-download"></i> Download
-                    </a>
-                </div>
-            </div>
-        `;
-        
-        imagesContainer.insertBefore(imageCard, imagesContainer.firstChild);
-    }
-
-    // RAG Document Upload
-    uploadRAGDocument() {
-        document.getElementById('ragFileInput').click();
-    }
-
-    // Codebase Upload
-    uploadCodebase() {
-        document.getElementById('codeFileInput').click();
     }
 
     // Handle RAG file upload
@@ -783,6 +782,106 @@ class ChatInterface {
         }
     }
 
+    // Image Generation Panel
+    openImageGenPanel() {
+        const panel = document.getElementById('imageGenPanel');
+        if (panel) {
+            panel.classList.add('show');
+        }
+    }
+
+    closeImageGenPanel() {
+        const panel = document.getElementById('imageGenPanel');
+        if (panel) {
+            panel.classList.remove('show');
+        }
+    }
+
+    setImagePrompt(text) {
+        const promptInput = document.getElementById('imagePromptInput');
+        if (promptInput) {
+            promptInput.value = text;
+            promptInput.focus();
+        }
+    }
+
+    async generateImage() {
+        const promptInput = document.getElementById('imagePromptInput');
+        const prompt = promptInput.value.trim();
+
+        if (!prompt) {
+            alert('Please enter a prompt to generate an image');
+            return;
+        }
+
+        const generateBtn = document.getElementById('generateBtn');
+        if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        }
+
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            }
+
+            if (data.image_url) {
+                // Add to chat
+                this.addMessage('assistant', `🎨 Generated image for: "${prompt}"\n<img src="${data.image_url}" alt="Generated Image" class="generated-image" onclick="openImageModal('${data.image_url}')">`);
+                
+                // Add to image panel
+                this.addImageToPanel(data.image_url, prompt);
+                
+                // Clear prompt
+                promptInput.value = '';
+            } else {
+                throw new Error(data.error || 'Failed to generate image');
+            }
+
+        } catch (error) {
+            console.error('Generation error:', error);
+            alert(`Failed to generate image: ${error.message}`);
+        } finally {
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Image';
+            }
+        }
+    }
+
+    addImageToPanel(imageUrl, prompt) {
+        const imagesContainer = document.getElementById('generatedImages');
+        if (!imagesContainer) return;
+
+        const imageCard = document.createElement('div');
+        imageCard.className = 'image-card';
+        
+        imageCard.innerHTML = `
+            <img src="${imageUrl}" alt="Generated Image" onclick="openImageModal('${imageUrl}')">
+            <div class="image-card-info">
+                <div class="image-prompt">${prompt}</div>
+                <div class="image-actions">
+                    <button class="image-action" onclick="openImageModal('${imageUrl}')">
+                        <i class="fas fa-expand"></i> View
+                    </button>
+                    <a href="${imageUrl}" download="generated-image.png" class="image-action">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </div>
+        `;
+        
+        imagesContainer.insertBefore(imageCard, imagesContainer.firstChild);
+    }
+
     // Navigation functions
     newChat() {
         fetch('/new_session')
@@ -805,25 +904,33 @@ class ChatInterface {
 
     clearChatMessages() {
         const chatMessages = document.getElementById('chat-messages');
-        chatMessages.innerHTML = `
-            <div class="typing-indicator" id="typing-indicator">
-                <div class="message-avatar">AI</div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+        if (chatMessages) {
+            chatMessages.innerHTML = `
+                <div class="typing-indicator" id="typing-indicator">
+                    <div class="message-avatar">AI</div>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     }
 
     // Settings
     openSettings() {
-        document.getElementById('settingsModal').classList.add('show');
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            modal.classList.add('show');
+        }
     }
 
     closeSettings() {
-        document.getElementById('settingsModal').classList.remove('show');
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     }
 
     updateSetting(key, value) {
@@ -915,16 +1022,16 @@ class ChatInterface {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('show');
+        if (sidebar) sidebar.classList.toggle('open');
+        if (overlay) overlay.classList.toggle('show');
     }
 
     closeSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         
-        sidebar.classList.remove('open');
-        overlay.classList.remove('show');
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
     }
 
     focusInput() {
@@ -944,14 +1051,21 @@ class ChatInterface {
 
 // Global functions for HTML onclick handlers
 function openImageModal(imageSrc) {
-    document.getElementById('modalImage').src = imageSrc;
-    document.getElementById('imageModal').classList.add('show');
-    document.body.style.overflow = 'hidden';
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    if (modal && modalImage) {
+        modalImage.src = imageSrc;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function closeImageModal() {
-    document.getElementById('imageModal').classList.remove('show');
-    document.body.style.overflow = 'auto';
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto';
+    }
 }
 
 function copyCode(button) {
@@ -986,15 +1100,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.closeSidebar = () => window.chatInterface.closeSidebar();
     window.logout = () => window.chatInterface.logout();
     
-    // File upload event listeners
-    document.getElementById('ragFileInput').addEventListener('change', () => {
-        window.chatInterface.handleRAGUpload();
-    });
-    
-    document.getElementById('codeFileInput').addEventListener('change', () => {
-        window.chatInterface.handleCodebaseUpload();
-    });
-    
     // Close modals with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -1005,9 +1110,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Close image modal when clicking outside
-    document.getElementById('imageModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeImageModal();
-        }
-    });
+    const imageModal = document.getElementById('imageModal');
+    if (imageModal) {
+        imageModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
+            }
+        });
+    }
 });

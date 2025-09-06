@@ -8,6 +8,11 @@ class WebSearchService:
     def __init__(self):
         self.api_key = Config.SERPER_API_KEY
         self.base_url = "https://google.serper.dev/search"
+        
+        if self.api_key:
+            print("✅ Web Search Service initialized with Serper API")
+        else:
+            print("⚠️ Serper API key not configured - web search will be disabled")
     
     def search(self, query, num_results=5):
         """Perform web search using Serper API"""

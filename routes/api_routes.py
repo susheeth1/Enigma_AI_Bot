@@ -7,10 +7,12 @@ from services.code_processor import CodeProcessor
 from utils.enhanced_document_processor import EnhancedDocumentProcessor
 from utils.enhanced_vector_store import EnhancedVectorStore
 from utils.database import DatabaseManager
+from utils.image_processor import ImageProcessor
 import json
 import time
 import zipfile
 import tempfile
+import os
 
 api_bp = Blueprint('api', __name__)
 chat_service = ChatService()
@@ -20,6 +22,7 @@ code_processor = CodeProcessor()
 enhanced_doc_processor = EnhancedDocumentProcessor()
 enhanced_vector_store = EnhancedVectorStore()
 db_manager = DatabaseManager()
+image_processor = ImageProcessor()
 
 @api_bp.route('/send_message', methods=['POST'])
 def send_message():
@@ -60,8 +63,8 @@ def stream_chat_response(user_message, user_id, session_id):
 
         # Get relevant documents from vector store
         vector_context = ""
-        if chat_service.vector_store.collection_exists(session_id):
-            relevant_docs = chat_service.vector_store.search_documents(session_id, user_message)
+        if enhanced_vector_store.collection_exists(session_id, "documents"):
+            relevant_docs = enhanced_vector_store.search_documents(session_id, user_message, "documents")
             vector_context = "\n".join([doc.get('text', '') for doc in relevant_docs])
 
         # Combine contexts
@@ -133,31 +136,85 @@ def web_search():
 
 @api_bp.route('/upload_file', methods=['POST'])
 def upload_file():
+    """Upload and process general files (images, documents)"""
     if 'user_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
     try:
         file = request.files.get('file')
-        result = file_service.process_uploaded_file(
-            file, 
-            session['session_id'], 
-            session['user_id']
-        )
+        if not file or not file.filename:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        # Check file type
+        filename = file.filename.lower()
+        
+        if filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')):
+            # Handle image file
+            return handle_image_upload(file)
+        elif filename.endswith(('.pdf', '.docx', '.txt', '.md')):
+            # Handle document file (basic processing)
+            return handle_document_upload(file)
+        else:
+            return jsonify({'error': 'Unsupported file type'}), 400
 
-        # Save document info to database
-        if result['type'] == 'document':
-            db_manager.save_document(
-                session['user_id'],
-                session['session_id'],
-                result['filename'],
-                file.content_type,
-                0  # Size already calculated in service
-            )
-
-        return jsonify(result)
     except Exception as e:
         print(f"[upload_file] Error: {e}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
+
+def handle_image_upload(file):
+    """Handle image file upload and analysis"""
+    try:
+        # Save file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_file:
+            file.save(tmp_file.name)
+            
+            try:
+                # Analyze image with AI
+                description = image_processor.analyze_with_ai(tmp_file.name)
+                
+                return jsonify({
+                    'type': 'image',
+                    'filename': file.filename,
+                    'description': description,
+                    'message': f'Image "{file.filename}" analyzed successfully!'
+                })
+                
+            finally:
+                # Clean up temporary file
+                os.unlink(tmp_file.name)
+                
+    except Exception as e:
+        print(f"[handle_image_upload] Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def handle_document_upload(file):
+    """Handle document file upload (basic processing)"""
+    try:
+        # Save file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_file:
+            file.save(tmp_file.name)
+            
+            try:
+                # Process document
+                processed_chunks = enhanced_doc_processor.process_document(tmp_file.name)
+                
+                if not processed_chunks:
+                    return jsonify({'error': 'Failed to process document or no text content found'}), 400
+                
+                return jsonify({
+                    'type': 'document',
+                    'filename': file.filename,
+                    'chunks': len(processed_chunks),
+                    'message': f'Document "{file.filename}" processed successfully!'
+                })
+                
+            finally:
+                # Clean up temporary file
+                os.unlink(tmp_file.name)
+                
+    except Exception as e:
+        print(f"[handle_document_upload] Error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/upload_document', methods=['POST'])
 def upload_document():
@@ -171,8 +228,6 @@ def upload_document():
             return jsonify({'error': 'No file uploaded'}), 400
         
         # Save file temporarily
-        import tempfile
-        import os
         from werkzeug.utils import secure_filename
         
         filename = secure_filename(file.filename)
@@ -236,8 +291,6 @@ def upload_codebase():
             return jsonify({'error': 'Only ZIP files are supported for codebase upload'}), 400
         
         # Save file temporarily
-        import tempfile
-        import os
         from werkzeug.utils import secure_filename
         
         filename = secure_filename(file.filename)
