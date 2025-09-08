@@ -455,59 +455,125 @@ body {
 
 /* Code Canvas Styling */
 .code-canvas {
-    background: #1e1e1e;
+    background: #0d1117;
     border-radius: var(--radius);
     margin: 1rem 0;
     overflow: hidden;
-    border: 1px solid #333;
+    border: 1px solid #30363d;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .code-header {
-    background: #2d2d2d;
+    background: #161b22;
     padding: 0.5rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #30363d;
 }
 
 .code-language {
-    color: #ffd700;
+    color: #58a6ff;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
+    background: rgba(88, 166, 255, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
 }
 
 .copy-code-btn {
-    background: #007acc;
+    background: #238636;
     color: white;
     border: none;
     padding: 0.25rem 0.5rem;
     border-radius: 3px;
     font-size: 0.75rem;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .copy-code-btn:hover {
-    background: #005a9e;
+    background: #2ea043;
+    transform: translateY(-1px);
 }
 
 .code-content {
-    background: #1e1e1e;
-    color: #d4d4d4;
+    background: #0d1117;
+    color: #e6edf3;
     padding: 1rem;
     margin: 0;
     overflow-x: auto;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
     font-size: 0.875rem;
-    line-height: 1.5;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.code-content pre {
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .code-content code {
     background: none;
     padding: 0;
     color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* GitHub Input Styling */
+.github-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: var(--surface-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: var(--theme-transition);
+}
+
+.github-url-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.875rem;
+    outline: none;
+    color: var(--text-primary);
+    padding: 0.5rem;
+}
+
+.github-url-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.github-btn {
+    background: #24292e;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.github-btn:hover {
+    background: #1a1e22;
+    transform: translateY(-1px);
 }
 
 .chat-messages {

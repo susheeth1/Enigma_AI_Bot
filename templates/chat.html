@@ -127,6 +127,19 @@
 
         <div class="chat-input">
             <div class="input-container">
+                <!-- GitHub URL input for code mode -->
+                <div class="github-input" id="githubInput" style="display: none;">
+                    <input 
+                        type="url" 
+                        id="githubUrlInput" 
+                        placeholder="Enter GitHub repository URL..."
+                        class="github-url-input"
+                    >
+                    <button class="github-btn" id="githubBtn" title="Process GitHub Repository">
+                        <i class="fab fa-github"></i>
+                    </button>
+                </div>
+                
                 <textarea 
                     id="messageInput" 
                     class="message-input" 
@@ -134,7 +147,7 @@
                     rows="1"
                 ></textarea>
                 <div class="input-actions">
-                    <div class="file-upload">
+                    <div class="file-upload" id="generalUpload">
                         <input type="file" id="fileInput" accept=".docx,.jpg,.jpeg,.png,.gif">
                         <button class="action-btn file-btn" onclick="document.getElementById('fileInput').click()" title="Upload File">
                             <i class="fas fa-paperclip"></i>
@@ -142,13 +155,13 @@
                     </div>
                     <div class="file-upload" id="ragUpload" style="display: none;">
                         <input type="file" id="ragFileInput" accept=".pdf,.docx,.txt,.md">
-                        <button class="action-btn file-btn" onclick="window.chatInterface.uploadRAGDocument()" title="Upload Document for RAG">
+                        <button class="action-btn file-btn" onclick="document.getElementById('ragFileInput').click()" title="Upload Document for RAG">
                             <i class="fas fa-file-text"></i>
                         </button>
                     </div>
                     <div class="file-upload" id="codeUpload" style="display: none;">
                         <input type="file" id="codeFileInput" accept=".zip">
-                        <button class="action-btn file-btn" onclick="window.chatInterface.uploadCodebase()" title="Upload Codebase ZIP">
+                        <button class="action-btn file-btn" onclick="document.getElementById('codeFileInput').click()" title="Upload Codebase ZIP">
                             <i class="fas fa-file-archive"></i>
                         </button>
                     </div>
@@ -159,19 +172,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Image Generation Panel -->
-    <div class="image-gen-panel" id="imageGenPanel">
-        <div class="image-gen-header">
-            <h3>🎨 Image Generator</h3>
-            <button class="close-panel-btn" id="closePanelBtn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="image-gen-content">
-            <div class="form-group">
-                <label class="form-label">Describe your image</label>
-                <textarea 
                     id="imagePromptInput" 
                     class="prompt-textarea" 
                     placeholder="A majestic dragon flying over a medieval castle at sunset..."

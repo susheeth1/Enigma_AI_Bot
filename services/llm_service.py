@@ -189,11 +189,10 @@ class LLMService:
     def _get_system_prompt(self):
         """Get system prompt for LLM"""
         return (
-            "You are a helpful assistant. "
-            "Answer only based on the document chunks provided in the context. "
-            "If the answer is not clearly present in the context, respond with: "
-            "\"This information is not found in the uploaded document.\" "
-            "Do not use any external knowledge."
+            "You are a helpful AI assistant. You can answer questions, help with tasks, "
+            "provide information, and generate code. When generating code, always format it "
+            "properly with appropriate syntax highlighting using markdown code blocks. "
+            "Be helpful, accurate, and provide detailed explanations when needed."
         )
 
     def _format_message_with_context(self, user_message, context=""):

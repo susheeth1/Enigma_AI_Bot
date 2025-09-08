@@ -41,11 +41,6 @@ class ChatInterface {
             sendBtn.addEventListener('click', () => this.sendMessage());
         }
 
-        const fileInput = document.getElementById('fileInput');
-        if (fileInput) {
-            fileInput.addEventListener('change', () => this.uploadFile());
-        }
-
         // Mode selector events
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -61,14 +56,17 @@ class ChatInterface {
         // Mobile events
         this.bindMobileEvents();
 
-        // Image generation events
-        this.bindImageGenEvents();
-
         // File upload events
         this.bindFileUploadEvents();
     }
 
     bindFileUploadEvents() {
+        // General file upload
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.addEventListener('change', () => this.uploadFile());
+        }
+
         // RAG file upload
         const ragFileInput = document.getElementById('ragFileInput');
         if (ragFileInput) {
@@ -79,6 +77,12 @@ class ChatInterface {
         const codeFileInput = document.getElementById('codeFileInput');
         if (codeFileInput) {
             codeFileInput.addEventListener('change', () => this.handleCodebaseUpload());
+        }
+
+        // GitHub URL input
+        const githubBtn = document.getElementById('githubBtn');
+        if (githubBtn) {
+            githubBtn.addEventListener('click', () => this.handleGitHubUpload());
         }
     }
 
@@ -117,36 +121,6 @@ class ChatInterface {
         const overlay = document.getElementById('overlay');
         if (overlay) {
             overlay.addEventListener('click', () => this.closeSidebar());
-        }
-    }
-
-    bindImageGenEvents() {
-        const generateBtn = document.getElementById('generateBtn');
-        const promptTextarea = document.getElementById('imagePromptInput');
-        
-        if (generateBtn) {
-            generateBtn.addEventListener('click', () => this.generateImage());
-        }
-
-        if (promptTextarea) {
-            promptTextarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.ctrlKey) {
-                    this.generateImage();
-                }
-            });
-        }
-
-        // Example prompts
-        document.querySelectorAll('.example-prompt').forEach(prompt => {
-            prompt.addEventListener('click', (e) => {
-                this.setImagePrompt(e.target.textContent.trim());
-            });
-        });
-
-        // Close panel
-        const closePanelBtn = document.getElementById('closePanelBtn');
-        if (closePanelBtn) {
-            closePanelBtn.addEventListener('click', () => this.closeImageGenPanel());
         }
     }
 
@@ -209,16 +183,6 @@ class ChatInterface {
     }
 
     updateUIForMode(mode) {
-        // Close image panel if not in image mode
-        if (mode !== 'image') {
-            this.closeImageGenPanel();
-        }
-        
-        // Show image panel if in image mode
-        if (mode === 'image') {
-            this.openImageGenPanel();
-        }
-
         // Update chat header title
         const chatTitle = document.querySelector('.chat-title h1');
         if (chatTitle) {
@@ -230,6 +194,12 @@ class ChatInterface {
                 'code': '💻 Code Assistant'
             };
             chatTitle.textContent = titles[mode] || 'AI Assistant';
+        }
+
+        // Show/hide GitHub input for code mode
+        const githubInput = document.getElementById('githubInput');
+        if (githubInput) {
+            githubInput.style.display = mode === 'code' ? 'flex' : 'none';
         }
     }
 
@@ -251,7 +221,7 @@ class ChatInterface {
     updateFileInputs(mode) {
         // Hide all file inputs first
         const fileInputs = {
-            'fileInput': document.querySelector('.file-upload'),
+            'generalUpload': document.getElementById('generalUpload'),
             'ragUpload': document.getElementById('ragUpload'),
             'codeUpload': document.getElementById('codeUpload')
         };
@@ -263,16 +233,16 @@ class ChatInterface {
         // Show appropriate file input based on mode
         switch (mode) {
             case 'rag':
-                if (fileInputs.ragUpload) fileInputs.ragUpload.style.display = 'block';
+                if (fileInputs.ragUpload) fileInputs.ragUpload.style.display = 'flex';
                 break;
             case 'code':
-                if (fileInputs.codeUpload) fileInputs.codeUpload.style.display = 'block';
+                if (fileInputs.codeUpload) fileInputs.codeUpload.style.display = 'flex';
                 break;
             case 'chat':
             case 'image':
             case 'search':
             default:
-                if (fileInputs.fileInput) fileInputs.fileInput.style.display = 'block';
+                if (fileInputs.generalUpload) fileInputs.generalUpload.style.display = 'flex';
                 break;
         }
     }
@@ -579,24 +549,38 @@ class ChatInterface {
 
     formatCodeBlocks(content) {
         // Format code blocks with syntax highlighting
-        const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+        const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
         return content.replace(codeBlockRegex, (match, language, code) => {
             const lang = language || 'text';
             const codeId = 'code_' + Math.random().toString(36).substr(2, 9);
+            const formattedCode = this.formatCodeWithIndentation(code.trim());
             return `
                 <div class="code-canvas">
                     <div class="code-header">
                         <span class="code-language">${lang}</span>
-                        <button class="copy-code-btn" onclick="copyCode(this)">
+                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">
                             <i class="fas fa-copy"></i> Copy
                         </button>
                     </div>
                     <div class="code-content">
-                        <code id="${codeId}">${this.escapeHtml(code.trim())}</code>
+                        <pre><code id="${codeId}" class="language-${lang}">${this.escapeHtml(formattedCode)}</code></pre>
                     </div>
                 </div>
             `;
         });
+    }
+
+    formatCodeWithIndentation(code) {
+        // Preserve original indentation and formatting
+        const lines = code.split('\n');
+        let formattedLines = [];
+        
+        for (let line of lines) {
+            // Preserve leading whitespace
+            formattedLines.push(line);
+        }
+        
+        return formattedLines.join('\n');
     }
 
     escapeHtml(text) {
@@ -782,104 +766,40 @@ class ChatInterface {
         }
     }
 
-    // Image Generation Panel
-    openImageGenPanel() {
-        const panel = document.getElementById('imageGenPanel');
-        if (panel) {
-            panel.classList.add('show');
-        }
-    }
-
-    closeImageGenPanel() {
-        const panel = document.getElementById('imageGenPanel');
-        if (panel) {
-            panel.classList.remove('show');
-        }
-    }
-
-    setImagePrompt(text) {
-        const promptInput = document.getElementById('imagePromptInput');
-        if (promptInput) {
-            promptInput.value = text;
-            promptInput.focus();
-        }
-    }
-
-    async generateImage() {
-        const promptInput = document.getElementById('imagePromptInput');
-        const prompt = promptInput.value.trim();
-
-        if (!prompt) {
-            alert('Please enter a prompt to generate an image');
+    // Handle GitHub repository upload
+    async handleGitHubUpload() {
+        const githubUrlInput = document.getElementById('githubUrlInput');
+        const githubUrl = githubUrlInput.value.trim();
+        
+        if (!githubUrl) {
+            alert('Please enter a GitHub repository URL');
             return;
         }
 
-        const generateBtn = document.getElementById('generateBtn');
-        if (generateBtn) {
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        }
+        this.addMessage('user', `💻 Processing GitHub repository: ${githubUrl}`);
+        this.showTypingIndicator();
 
         try {
-            const response = await fetch('/generate', {
+            const response = await fetch('/upload_github', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify({ github_url: githubUrl })
             });
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-            }
-
-            if (data.image_url) {
-                // Add to chat
-                this.addMessage('assistant', `🎨 Generated image for: "${prompt}"\n<img src="${data.image_url}" alt="Generated Image" class="generated-image" onclick="openImageModal('${data.image_url}')">`);
-                
-                // Add to image panel
-                this.addImageToPanel(data.image_url, prompt);
-                
-                // Clear prompt
-                promptInput.value = '';
+            if (data.error) {
+                this.addMessage('assistant', `💻 GitHub upload failed: ${data.error}`);
             } else {
-                throw new Error(data.error || 'Failed to generate image');
+                this.addMessage('assistant', `💻 ${data.message}\n\nProcessed ${data.chunks} code chunks from "${data.repo_name}". You can now ask questions about this codebase!`);
+                githubUrlInput.value = '';
             }
-
         } catch (error) {
-            console.error('Generation error:', error);
-            alert(`Failed to generate image: ${error.message}`);
+            console.error('GitHub upload error:', error);
+            this.addMessage('assistant', '💻 GitHub repository processing failed. Please try again.');
         } finally {
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Image';
-            }
+            this.hideTypingIndicator();
         }
-    }
-
-    addImageToPanel(imageUrl, prompt) {
-        const imagesContainer = document.getElementById('generatedImages');
-        if (!imagesContainer) return;
-
-        const imageCard = document.createElement('div');
-        imageCard.className = 'image-card';
-        
-        imageCard.innerHTML = `
-            <img src="${imageUrl}" alt="Generated Image" onclick="openImageModal('${imageUrl}')">
-            <div class="image-card-info">
-                <div class="image-prompt">${prompt}</div>
-                <div class="image-actions">
-                    <button class="image-action" onclick="openImageModal('${imageUrl}')">
-                        <i class="fas fa-expand"></i> View
-                    </button>
-                    <a href="${imageUrl}" download="generated-image.png" class="image-action">
-                        <i class="fas fa-download"></i> Download
-                    </a>
-                </div>
-            </div>
-        `;
-        
-        imagesContainer.insertBefore(imageCard, imagesContainer.firstChild);
     }
 
     // Navigation functions
@@ -1068,19 +988,22 @@ function closeImageModal() {
     }
 }
 
-function copyCode(button) {
-    const codeBlock = button.closest('.code-canvas').querySelector('.code-content code');
+function copyCode(codeId) {
+    const codeBlock = document.getElementById(codeId);
     const text = codeBlock.textContent;
     
     navigator.clipboard.writeText(text).then(() => {
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.style.background = '#007acc';
-        }, 2000);
+        const button = document.querySelector(`button[onclick="copyCode('${codeId}')"]`);
+        if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            button.style.background = '#28a745';
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '#007acc';
+            }, 2000);
+        }
     }).catch(err => {
         console.error('Failed to copy code:', err);
         alert('Failed to copy code to clipboard');
@@ -1105,7 +1028,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Escape') {
             closeImageModal();
             window.chatInterface.closeSettings();
-            window.chatInterface.closeImageGenPanel();
         }
     });
     

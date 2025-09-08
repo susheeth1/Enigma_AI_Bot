@@ -433,6 +433,82 @@ def chat_with_code():
         print(f"[chat_with_code] Error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@api_bp.route('/upload_github', methods=['POST'])
+def upload_github():
+    """Upload and process GitHub repository"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        github_url = data.get('github_url', '').strip()
+        
+        if not github_url:
+            return jsonify({'error': 'GitHub URL is required'}), 400
+        
+        # Extract repo info from URL
+        import re
+        github_pattern = r'github\.com/([^/]+)/([^/]+)'
+        match = re.search(github_pattern, github_url)
+        
+        if not match:
+            return jsonify({'error': 'Invalid GitHub URL format'}), 400
+        
+        owner, repo = match.groups()
+        repo_name = f"{owner}/{repo}"
+        
+        # Download and process repository
+        import requests
+        import tempfile
+        import zipfile
+        
+        # Download repository as ZIP
+        zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/main.zip"
+        
+        try:
+            response = requests.get(zip_url, timeout=30)
+            if response.status_code == 404:
+                # Try master branch
+                zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/master.zip"
+                response = requests.get(zip_url, timeout=30)
+            
+            response.raise_for_status()
+        except requests.RequestException:
+            return jsonify({'error': 'Failed to download repository. Please check the URL and try again.'}), 400
+        
+        # Save and process ZIP file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
+            tmp_file.write(response.content)
+            tmp_file_path = tmp_file.name
+        
+        try:
+            # Process codebase
+            code_chunks = code_processor.process_zip_file(tmp_file_path, session['session_id'])
+            
+            if not code_chunks:
+                return jsonify({'error': 'No supported code files found in repository'}), 400
+            
+            # Store in vector database
+            success = enhanced_vector_store.add_code_chunks(session['session_id'], code_chunks)
+            
+            if success:
+                return jsonify({
+                    'message': f'GitHub repository "{repo_name}" processed successfully!',
+                    'chunks': len(code_chunks),
+                    'repo_name': repo_name,
+                    'type': 'github'
+                })
+            else:
+                return jsonify({'error': 'Failed to store repository in vector database'}), 500
+                
+        finally:
+            # Clean up temporary file
+            os.unlink(tmp_file_path)
+            
+    except Exception as e:
+        print(f"[upload_github] Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/get_chat_sessions')
 def get_chat_sessions():
     if 'user_id' not in session:
