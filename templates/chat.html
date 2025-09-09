@@ -68,23 +68,23 @@
                 <button class="mobile-menu-btn" onclick="toggleSidebar()">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h1>AI Assistant</h1>
+                <h1>💬 AI Assistant</h1>
             </div>
             <div class="chat-actions">
                 <div class="mode-selector">
-                    <button class="mode-btn active" data-mode="chat">
+                    <button class="mode-btn active" data-mode="chat" title="General Chat">
                         💬
                     </button>
-                    <button class="mode-btn" data-mode="image">
+                    <button class="mode-btn" data-mode="image" title="Image Generation">
                         🎨
                     </button>
-                    <button class="mode-btn" data-mode="search">
+                    <button class="mode-btn" data-mode="search" title="Web Search">
                         🔍
                     </button>
-                    <button class="mode-btn" data-mode="rag">
+                    <button class="mode-btn" data-mode="rag" title="Document Chat">
                         📄
                     </button>
-                    <button class="mode-btn" data-mode="code">
+                    <button class="mode-btn" data-mode="code" title="Codebase Chat">
                         💻
                     </button>
                 </div>
@@ -104,11 +104,11 @@
                 <div class="message-content">
                     <div class="message-text">
                         Hello! I'm your AI assistant with multiple modes:
-                        <br><br>💬 <strong>Chat Mode</strong>: Regular AI conversation with code generation in canvas
-                        <br>🎨 <strong>Image Mode</strong>: Generate images from text prompts (toggle in settings)
+                        <br><br>💬 <strong>Chat Mode</strong>: Regular AI conversation with beautiful code generation
+                        <br>🎨 <strong>Image Mode</strong>: Generate images from text prompts
                         <br>🔍 <strong>Search Mode</strong>: Search the web and get AI-analyzed results
-                        <br>📄 <strong>RAG Mode</strong>: Upload documents (PDF, DOCX, TXT, MD) and chat with them
-                        <br>💻 <strong>Code Mode</strong>: Upload ZIP codebase and interact with your code
+                        <br>📄 <strong>RAG Mode</strong>: Upload documents and chat with them
+                        <br>💻 <strong>Code Mode</strong>: Upload ZIP codebase or GitHub URL and interact with your code
                         <br><br>Switch between modes using the buttons above. How can I help you today?
                     </div>
                     <div class="message-time">Just now</div>
@@ -126,20 +126,22 @@
         </div>
 
         <div class="chat-input">
+            <!-- GitHub URL input for code mode -->
+            <div class="github-input" id="githubInput" style="display: none;">
+                <i class="fab fa-github"></i>
+                <input 
+                    type="url" 
+                    id="githubUrlInput" 
+                    placeholder="https://github.com/username/repository"
+                    class="github-url-input"
+                >
+                <button class="github-btn" id="githubBtn" title="Process GitHub Repository">
+                    <i class="fas fa-download"></i>
+                    Process
+                </button>
+            </div>
+
             <div class="input-container">
-                <!-- GitHub URL input for code mode -->
-                <div class="github-input" id="githubInput" style="display: none;">
-                    <input 
-                        type="url" 
-                        id="githubUrlInput" 
-                        placeholder="Enter GitHub repository URL..."
-                        class="github-url-input"
-                    >
-                    <button class="github-btn" id="githubBtn" title="Process GitHub Repository">
-                        <i class="fab fa-github"></i>
-                    </button>
-                </div>
-                
                 <textarea 
                     id="messageInput" 
                     class="message-input" 
@@ -147,53 +149,34 @@
                     rows="1"
                 ></textarea>
                 <div class="input-actions">
+                    <!-- General file upload -->
                     <div class="file-upload" id="generalUpload">
-                        <input type="file" id="fileInput" accept=".docx,.jpg,.jpeg,.png,.gif">
-                        <button class="action-btn file-btn" onclick="document.getElementById('fileInput').click()" title="Upload File">
-                            <i class="fas fa-paperclip"></i>
+                        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.gif,.webp,.bmp">
+                        <button class="action-btn file-btn" onclick="document.getElementById('fileInput').click()" title="Upload Image">
+                            <i class="fas fa-image"></i>
                         </button>
                     </div>
+                    
+                    <!-- RAG file upload -->
                     <div class="file-upload" id="ragUpload" style="display: none;">
                         <input type="file" id="ragFileInput" accept=".pdf,.docx,.txt,.md">
-                        <button class="action-btn file-btn" onclick="document.getElementById('ragFileInput').click()" title="Upload Document for RAG">
+                        <button class="action-btn file-btn" onclick="document.getElementById('ragFileInput').click()" title="Upload Document">
                             <i class="fas fa-file-text"></i>
                         </button>
                     </div>
+                    
+                    <!-- Code file upload -->
                     <div class="file-upload" id="codeUpload" style="display: none;">
                         <input type="file" id="codeFileInput" accept=".zip">
-                        <button class="action-btn file-btn" onclick="document.getElementById('codeFileInput').click()" title="Upload Codebase ZIP">
+                        <button class="action-btn file-btn" onclick="document.getElementById('codeFileInput').click()" title="Upload ZIP Codebase">
                             <i class="fas fa-file-archive"></i>
                         </button>
                     </div>
+                    
                     <button class="action-btn send-btn" id="sendBtn" title="Send Message">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-    </div>
-                    id="imagePromptInput" 
-                    class="prompt-textarea" 
-                    placeholder="A majestic dragon flying over a medieval castle at sunset..."
-                ></textarea>
-            </div>
-            
-            <button class="generate-btn" id="generateBtn">
-                <i class="fas fa-magic"></i>
-                Generate Image
-            </button>
-
-            <div class="example-prompts">
-                <h4>💡 Example Prompts</h4>
-                <div class="example-prompt">A cyberpunk city with neon lights and flying cars</div>
-                <div class="example-prompt">A serene Japanese garden with cherry blossoms</div>
-                <div class="example-prompt">A realistic portrait of a wise old wizard</div>
-                <div class="example-prompt">A cozy coffee shop with warm lighting</div>
-                <div class="example-prompt">A space station orbiting Earth</div>
-            </div>
-
-            <div class="generated-images" id="generatedImages">
-                <!-- Generated images will appear here -->
             </div>
         </div>
     </div>
@@ -209,26 +192,6 @@
             </button>
         </div>
         <div class="modal-body">
-            <div class="setting-group">
-                <label class="setting-label">Theme</label>
-                <div class="setting-description">Choose your preferred theme</div>
-                <select class="form-input" id="themeSelect">
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="auto">Auto</option>
-                </select>
-            </div>
-            
-            <div class="setting-group">
-                <label class="setting-label">Font Size</label>
-                <div class="setting-description">Adjust the chat font size</div>
-                <select class="form-input" id="fontSizeSelect">
-                    <option value="small">Small</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="large">Large</option>
-                </select>
-            </div>
-            
             <div class="setting-group">
                 <label class="setting-label">Auto-scroll</label>
                 <div class="setting-description">Automatically scroll to new messages</div>
