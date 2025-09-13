@@ -163,29 +163,31 @@ def upload_file():
 
 def handle_image_upload(file):
     """Handle image file upload and analysis"""
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
     try:
-        # Save file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_file:
-            file.save(tmp_file.name)
-            
-            try:
-                # Analyze image with AI
-                description = image_processor.analyze_with_ai(tmp_file.name)
-                
-                return jsonify({
-                    'type': 'image',
-                    'filename': file.filename,
-                    'description': description,
-                    'message': f'Image "{file.filename}" analyzed successfully!'
-                })
-                
-            finally:
-                # Clean up temporary file
-                os.unlink(tmp_file.name)
-                
+        # Close the file handle immediately so other processes can access the file path
+        tmp_file.close()
+        
+        # Save the uploaded file to the temporary path
+        file.save(tmp_file.name)
+        
+        # Analyze image with AI
+        description = image_processor.analyze_with_ai(tmp_file.name)
+        
+        return jsonify({
+            'type': 'image',
+            'filename': file.filename,
+            'description': description,
+            'message': f'Image "{file.filename}" analyzed successfully!'
+        })
+        
     except Exception as e:
         print(f"[handle_image_upload] Error: {e}")
         return jsonify({'error': str(e)}), 500
+    finally:
+        # Ensure the temporary file is cleaned up
+        if os.path.exists(tmp_file.name):
+            os.unlink(tmp_file.name)
 
 def handle_document_upload(file):
     """Handle document file upload (basic processing)"""

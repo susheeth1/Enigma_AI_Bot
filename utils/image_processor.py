@@ -28,10 +28,12 @@ class ImageProcessor:
 
     def resize_image(self, image_path, max_size=(800, 600)):
         try:
-            with Image.open(image_path) as img:
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                img.save(image_path, optimize=True, quality=85)
-                return True
+            img = Image.open(image_path)
+            img.load()  # Force load to release file lock
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            img.save(image_path, optimize=True, quality=85)
+            img.close()
+            return True
         except Exception as e:
             print(f"Error resizing image: {str(e)}")
             return False

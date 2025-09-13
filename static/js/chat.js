@@ -10,7 +10,7 @@ class ChatInterface {
         this.currentMode = 'chat';
         this.streamingMessage = null;
         this.settings = {
-            imageGenEnabled: false,
+            imageGenEnabled: true,
             webSearchEnabled: true,
             ragEnabled: true,
             codeAnalysisEnabled: true,

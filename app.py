@@ -1,12 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 from flask import Flask
-from dotenv import load_dotenv
 from config.settings import Config
 from routes import register_routes
 from utils.database import DatabaseManager
-
-# Load environment variables
-load_dotenv()
 
 def create_app():
     """Application factory pattern"""
