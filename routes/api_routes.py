@@ -190,27 +190,44 @@ def handle_image_upload(file):
 def handle_document_upload(file):
     """Handle document file upload (basic processing)"""
     try:
-        # Save file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_file:
-            file.save(tmp_file.name)
+        # Save file temporarily with proper cleanup
+        import tempfile
+        import time
+        
+        # Create temporary file
+        fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(file.filename)[1])
+        
+        try:
+            # Close file descriptor and save file
+            os.close(fd)
+            file.save(tmp_path)
             
+            # Process document
+            processed_chunks = enhanced_doc_processor.process_document(tmp_path)
+            
+            if not processed_chunks:
+                return jsonify({'error': 'Failed to process document or no text content found'}), 400
+            
+            return jsonify({
+                'type': 'document',
+                'filename': file.filename,
+                'chunks': len(processed_chunks),
+                'message': f'Document "{file.filename}" processed successfully!'
+            })
+            
+        finally:
+            # Clean up temporary file with retry mechanism
             try:
-                # Process document
-                processed_chunks = enhanced_doc_processor.process_document(tmp_file.name)
-                
-                if not processed_chunks:
-                    return jsonify({'error': 'Failed to process document or no text content found'}), 400
-                
-                return jsonify({
-                    'type': 'document',
-                    'filename': file.filename,
-                    'chunks': len(processed_chunks),
-                    'message': f'Document "{file.filename}" processed successfully!'
-                })
-                
-            finally:
-                # Clean up temporary file
-                os.unlink(tmp_file.name)
+                if os.path.exists(tmp_path):
+                    time.sleep(0.1)  # Small delay to ensure file is released
+                    os.unlink(tmp_path)
+            except PermissionError:
+                # Retry after a longer delay
+                try:
+                    time.sleep(0.5)
+                    os.unlink(tmp_path)
+                except:
+                    print(f"Warning: Could not delete temporary file {tmp_path}")
                 
     except Exception as e:
         print(f"[handle_document_upload] Error: {e}")
@@ -227,50 +244,72 @@ def upload_document():
         if not file or not file.filename:
             return jsonify({'error': 'No file uploaded'}), 400
         
-        # Save file temporarily
+        # Save file temporarily with proper cleanup
         from werkzeug.utils import secure_filename
+        import tempfile
+        import time
         
         filename = secure_filename(file.filename)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp_file:
-            file.save(tmp_file.name)
+        
+        # Create temporary file
+        fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(filename)[1])
+        
+        try:
+            # Close file descriptor and save file
+            os.close(fd)
+            file.save(tmp_path)
             
-            try:
-                # Process document
-                processed_chunks = enhanced_doc_processor.process_document(tmp_file.name)
+            # Process document
+            processed_chunks = enhanced_doc_processor.process_document(tmp_path)
+            
+            if not processed_chunks:
+                return jsonify({'error': 'Failed to process document or no text content found'}), 400
+            
+            # Store in vector database
+            success = enhanced_vector_store.add_documents(
+                session['session_id'], 
+                processed_chunks, 
+                filename,
+                "documents"
+            )
+            
+            if success:
+                # Get file size before processing
+                file.seek(0, 2)  # Seek to end
+                file_size = file.tell()
+                file.seek(0)  # Reset to beginning
                 
-                if not processed_chunks:
-                    return jsonify({'error': 'Failed to process document or no text content found'}), 400
-                
-                # Store in vector database
-                success = enhanced_vector_store.add_documents(
-                    session['session_id'], 
-                    processed_chunks, 
+                # Save document metadata
+                db_manager.save_document(
+                    session['user_id'],
+                    session['session_id'],
                     filename,
-                    "documents"
+                    file.content_type or 'application/octet-stream',
+                    file_size
                 )
                 
-                if success:
-                    # Save document metadata
-                    db_manager.save_document(
-                        session['user_id'],
-                        session['session_id'],
-                        filename,
-                        file.content_type or 'application/octet-stream',
-                        len(file.read())
-                    )
-                    
-                    return jsonify({
-                        'message': f'Document "{filename}" processed successfully for RAG!',
-                        'chunks': len(processed_chunks),
-                        'filename': filename,
-                        'type': 'document'
-                    })
-                else:
-                    return jsonify({'error': 'Failed to store document in vector database'}), 500
-                    
-            finally:
-                # Clean up temporary file
-                os.unlink(tmp_file.name)
+                return jsonify({
+                    'message': f'Document "{filename}" processed successfully for RAG!',
+                    'chunks': len(processed_chunks),
+                    'filename': filename,
+                    'type': 'document'
+                })
+            else:
+                return jsonify({'error': 'Failed to store document in vector database'}), 500
+                
+        finally:
+            # Clean up temporary file with retry mechanism
+            try:
+                if os.path.exists(tmp_path):
+                    time.sleep(0.1)  # Small delay to ensure file is released
+                    os.unlink(tmp_path)
+            except PermissionError:
+                # Retry after a longer delay
+                try:
+                    time.sleep(0.5)
+                    os.unlink(tmp_path)
+                except:
+                    print(f"Warning: Could not delete temporary file {tmp_path}")
                 
     except Exception as e:
         print(f"[upload_document] Error: {e}")
@@ -290,36 +329,53 @@ def upload_codebase():
         if not file.filename.lower().endswith('.zip'):
             return jsonify({'error': 'Only ZIP files are supported for codebase upload'}), 400
         
-        # Save file temporarily
+        # Save file temporarily with proper cleanup
         from werkzeug.utils import secure_filename
+        import tempfile
+        import time
         
         filename = secure_filename(file.filename)
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
-            file.save(tmp_file.name)
+        
+        # Create temporary file
+        fd, tmp_path = tempfile.mkstemp(suffix='.zip')
+        
+        try:
+            # Close file descriptor and save file
+            os.close(fd)
+            file.save(tmp_path)
             
+            # Process codebase
+            code_chunks = code_processor.process_zip_file(tmp_path, session['session_id'])
+            
+            if not code_chunks:
+                return jsonify({'error': 'No supported code files found in ZIP'}), 400
+            
+            # Store in vector database
+            success = enhanced_vector_store.add_code_chunks(session['session_id'], code_chunks)
+            
+            if success:
+                return jsonify({
+                    'message': f'Codebase "{filename}" processed successfully!',
+                    'chunks': len(code_chunks),
+                    'filename': filename,
+                    'type': 'codebase'
+                })
+            else:
+                return jsonify({'error': 'Failed to store codebase in vector database'}), 500
+                
+        finally:
+            # Clean up temporary file with retry mechanism
             try:
-                # Process codebase
-                code_chunks = code_processor.process_zip_file(tmp_file.name, session['session_id'])
-                
-                if not code_chunks:
-                    return jsonify({'error': 'No supported code files found in ZIP'}), 400
-                
-                # Store in vector database
-                success = enhanced_vector_store.add_code_chunks(session['session_id'], code_chunks)
-                
-                if success:
-                    return jsonify({
-                        'message': f'Codebase "{filename}" processed successfully!',
-                        'chunks': len(code_chunks),
-                        'filename': filename,
-                        'type': 'codebase'
-                    })
-                else:
-                    return jsonify({'error': 'Failed to store codebase in vector database'}), 500
-                    
-            finally:
-                # Clean up temporary file
-                os.unlink(tmp_file.name)
+                if os.path.exists(tmp_path):
+                    time.sleep(0.1)  # Small delay to ensure file is released
+                    os.unlink(tmp_path)
+            except PermissionError:
+                # Retry after a longer delay
+                try:
+                    time.sleep(0.5)
+                    os.unlink(tmp_path)
+                except:
+                    print(f"Warning: Could not delete temporary file {tmp_path}")
                 
     except Exception as e:
         print(f"[upload_codebase] Error: {e}")
@@ -461,29 +517,37 @@ def upload_github():
         import requests
         import tempfile
         import zipfile
+        import time
         
         # Download repository as ZIP
         zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/main.zip"
         
         try:
-            response = requests.get(zip_url, timeout=30)
+            # Remove size limits for GitHub downloads
+            response = requests.get(zip_url, timeout=120, stream=True)
             if response.status_code == 404:
                 # Try master branch
                 zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/master.zip"
-                response = requests.get(zip_url, timeout=30)
+                response = requests.get(zip_url, timeout=120, stream=True)
             
             response.raise_for_status()
         except requests.RequestException:
             return jsonify({'error': 'Failed to download repository. Please check the URL and try again.'}), 400
         
-        # Save and process ZIP file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
-            tmp_file.write(response.content)
-            tmp_file_path = tmp_file.name
+        # Save and process ZIP file with proper cleanup
+        fd, tmp_path = tempfile.mkstemp(suffix='.zip')
         
         try:
+            # Close file descriptor and write content
+            os.close(fd)
+            with open(tmp_path, 'wb') as f:
+                # Write in chunks to handle large repositories
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
             # Process codebase
-            code_chunks = code_processor.process_zip_file(tmp_file_path, session['session_id'])
+            code_chunks = code_processor.process_zip_file(tmp_path, session['session_id'])
             
             if not code_chunks:
                 return jsonify({'error': 'No supported code files found in repository'}), 400
@@ -502,8 +566,18 @@ def upload_github():
                 return jsonify({'error': 'Failed to store repository in vector database'}), 500
                 
         finally:
-            # Clean up temporary file
-            os.unlink(tmp_file_path)
+            # Clean up temporary file with retry mechanism
+            try:
+                if os.path.exists(tmp_path):
+                    time.sleep(0.1)  # Small delay to ensure file is released
+                    os.unlink(tmp_path)
+            except PermissionError:
+                # Retry after a longer delay
+                try:
+                    time.sleep(0.5)
+                    os.unlink(tmp_path)
+                except:
+                    print(f"Warning: Could not delete temporary file {tmp_path}")
             
     except Exception as e:
         print(f"[upload_github] Error: {e}")

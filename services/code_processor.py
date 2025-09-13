@@ -27,24 +27,47 @@ class CodeProcessor:
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Extract zip file
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(temp_dir)
+                try:
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        # Extract with size limit protection for individual files
+                        for member in zip_ref.infolist():
+                            # Skip very large individual files (>50MB)
+                            if member.file_size > 50 * 1024 * 1024:
+                                print(f"Skipping large file: {member.filename} ({member.file_size} bytes)")
+                                continue
+                            zip_ref.extract(member, temp_dir)
+                except zipfile.BadZipFile:
+                    print("Error: Invalid ZIP file")
+                    return []
                 
                 # Process extracted files
                 code_chunks = []
+                processed_files = 0
+                max_files = 1000  # Limit number of files to process
+                
                 for root, dirs, files in os.walk(temp_dir):
                     # Skip common non-essential directories
                     dirs[:] = [d for d in dirs if not d.startswith('.') and d not in {
                         'node_modules', '__pycache__', 'venv', 'env', 'dist', 'build',
-                        'target', 'bin', 'obj', '.git', '.svn', '.hg'
+                        'target', 'bin', 'obj', '.git', '.svn', '.hg', 'vendor',
+                        'bower_components', '.next', '.nuxt', 'coverage'
                     }]
                     
                     for file in files:
+                        if processed_files >= max_files:
+                            print(f"Reached maximum file limit ({max_files}), stopping processing")
+                            break
+                            
                         file_path = Path(root) / file
                         if self._should_process_file(file_path):
                             chunks = self._process_code_file(file_path, temp_dir)
                             code_chunks.extend(chunks)
+                            processed_files += 1
+                    
+                    if processed_files >= max_files:
+                        break
                 
+                print(f"Processed {processed_files} files, generated {len(code_chunks)} chunks")
                 return code_chunks
                 
         except Exception as e:

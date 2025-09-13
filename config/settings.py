@@ -3,7 +3,7 @@ import os
 class Config:
     """Application configuration"""
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key')
-    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
+    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 500 * 1024 * 1024))  # 500MB for large repositories
     
     # Folder configurations
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'static/uploads')

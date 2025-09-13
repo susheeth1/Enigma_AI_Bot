@@ -90,6 +90,13 @@ class EnhancedDocumentProcessor(DocumentProcessor):
         except Exception as e:
             print(f"Error processing PDF: {str(e)}")
             return []
+        finally:
+            # Ensure document is properly closed
+            try:
+                if 'doc' in locals():
+                    doc.close()
+            except:
+                pass
     
     def _process_docx(self, file_path):
         """Extract text from DOCX file"""
